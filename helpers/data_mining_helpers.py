@@ -22,11 +22,11 @@ def check_missing_values(row):
     """ functions that check and verifies if there are missing values in dataframe """
     counter = 0
     for element in row:
-        if element == True:
+        if element:
             counter+=1
-    return ("The amoung of missing records is: ", counter)
+    return "The amount of missing records is: ", counter
 
-def tokenize_text(text, remove_stopwords=False):
+def tokenize_text(text):
     """
     Tokenize text using the nltk library
     """

@@ -1,6 +1,8 @@
 import os
 import pandas as pd
+import nltk
 from langchain_core.tools import tool
+from typing import Optional
 
 def make_tools(session):
     @tool
@@ -143,4 +145,87 @@ def make_tools(session):
         
         return summary
 
-    return [list_files_tool, inspect_data_tool, check_missing_tool, check_duplicates_tool]
+    @tool
+    def sample_data_tool(n: int = 5, random_state: Optional[int] = None) -> dict:
+        """Subsamples the working DataFrame (session.dataframe).
+
+        Args:
+            n: Number of rows to sample.
+            random_state: Optional random seed for reproducible sampling.
+        """
+        if session.dataframe is None:
+            return {"error": "No dataset loaded in session.dataframe."}
+        
+        df = session.dataframe
+        if not isinstance(n, int) or n <= 0:
+            return {"error": "Parameter 'n' must be a positive integer."}
+        
+        if n > len(df):
+            return {"error": f"Requested sample size n={n} exceeds total rows in dataset ({len(df)})."}
+        
+        sampled_df = df.sample(n=n, random_state=random_state)
+        sampled_indices = sampled_df.index.tolist()
+        records = sampled_df.to_dict(orient="records")
+        
+        summary = {
+            "n_sampled": len(records),
+            "sampled_indices": sampled_indices,
+            "rows": records
+        }
+        
+        result_id = session.next_result_id("sample")
+        summary["result_id"] = result_id
+        
+        session.store_result("sample_data_tool", {"n": n, "random_state": random_state}, summary)
+        
+        return summary
+
+    @tool
+    def tokenize_tool() -> dict:
+        """Tokenizes each document's text in session.dataframe into unigrams.
+
+        Uses nltk.word_tokenize on lowercased text and stores the token lists
+        in session.dataframe["unigrams"].
+        """
+        if session.dataframe is None:
+            return {"error": "No dataset loaded in session.dataframe."}
+        
+        df = session.dataframe
+        if "text" not in df.columns:
+            return {"error": "DataFrame missing 'text' column."}
+        
+        # Ensure NLTK punkt and punkt_tab are available; return an error if unavailable
+        for resource in ['tokenizers/punkt', 'tokenizers/punkt_tab']:
+            try:
+                nltk.data.find(resource)
+            except LookupError:
+                res_name = resource.split('/')[-1]
+                try:
+                    nltk.download(res_name, quiet=True)
+                    nltk.data.find(resource)
+                except Exception as e:
+                    return {"error": f"Required NLTK resource '{res_name}' is unavailable: {str(e)}"}
+        
+        token_lists = []
+        for text in df["text"]:
+            if pd.isna(text) or not str(text).strip():
+                token_lists.append([])
+            else:
+                tokens = nltk.word_tokenize(str(text).lower())
+                token_lists.append(tokens)
+                
+        df["unigrams"] = token_lists
+        
+        summary = {
+            "n_documents": len(df),
+            "total_tokens": sum(len(t) for t in token_lists)
+        }
+        
+        result_id = session.next_result_id("tokenize")
+        summary["result_id"] = result_id
+        
+        session.store_result("tokenize_tool", {}, summary)
+        
+        return summary
+
+    return [list_files_tool, inspect_data_tool, check_missing_tool, check_duplicates_tool, sample_data_tool, tokenize_tool]

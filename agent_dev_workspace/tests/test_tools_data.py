@@ -66,12 +66,58 @@ def test_check_duplicates_tool():
     tools = make_tools(session)
     check_duplicates_tool = next(t for t in tools if t.name == "check_duplicates_tool")
     
-    # First, test checking duplicates without dropping (drop=False)
     res_check = check_duplicates_tool.invoke({"drop": False})
-    # Known Answer 3: Exactly 1 duplicate (rows 5 and 6 are duplicates)
-    assert res_check["n_duplicates"] == 2  # Both copies flagged as duplicates when keep=False
+    assert res_check["n_duplicates"] == 2
     
-    # Next, test dropping duplicates with keep=False (leaves 6 rows, removing both copies)
     res_drop = check_duplicates_tool.invoke({"drop": True})
     assert res_drop["total_rows"] == 6
     assert res_drop["n_dropped"] == 2
+
+def test_sample_data_tool():
+    session = SessionState()
+    
+    premade_tools, _ = load_workspace_tools("premade_tools", session)
+    load_dataset_tool = next(t for t in premade_tools if t.name == "load_dataset_tool")
+    load_dataset_tool.invoke({
+        "file_path": "agent_dev/sample_fixture.csv",
+        "text_column": "text",
+        "label_column": "label"
+    })
+    
+    tools = make_tools(session)
+    sample_data_tool = next(t for t in tools if t.name == "sample_data_tool")
+    
+    # Check Known Answer 13: n=4, random_state=42 returns rows [1, 5, 0, 7]
+    result = sample_data_tool.invoke({"n": 4, "random_state": 42})
+    assert result["sampled_indices"] == [1, 5, 0, 7]
+    assert result["n_sampled"] == 4
+
+def test_tokenize_tool():
+    session = SessionState()
+    
+    premade_tools, _ = load_workspace_tools("premade_tools", session)
+    load_dataset_tool = next(t for t in premade_tools if t.name == "load_dataset_tool")
+    load_dataset_tool.invoke({
+        "file_path": "agent_dev/sample_fixture.csv",
+        "text_column": "text",
+        "label_column": "label"
+    })
+    
+    tools = make_tools(session)
+    tokenize_tool = next(t for t in tools if t.name == "tokenize_tool")
+    result = tokenize_tool.invoke({})
+    
+    # Check Known Answer 10 token lists
+    expected_tokens = [
+        ["always", "alpha", "alpha", "alpha", "beta"],
+        ["always", "alpha", "alpha", "beta"],
+        ["always", "alpha", "beta"],
+        ["always", "gamma", "gamma", "gamma", "delta"],
+        ["always", "gamma", "gamma", "delta"],
+        ["always", "gamma", "delta"],
+        ["always", "gamma", "delta"],
+        []
+    ]
+    
+    assert session.dataframe["unigrams"].tolist() == expected_tokens
+    assert result["n_documents"] == 8

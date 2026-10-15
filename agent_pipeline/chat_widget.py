@@ -243,7 +243,7 @@ def launch_chat(
     # standard fix for that failure mode.
     output = widgets.Output(
         layout=widgets.Layout(
-            border="1px solid #ccc", height="420px", overflow_y="auto", flex="0 0 auto", width="100%"
+            border="1px solid #ccc", height="420px", overflow="scroll", width="100%"
         )
     )
     output.add_class("chat-output-box")
@@ -451,7 +451,7 @@ def launch_chat(
     text_input.on_submit(on_send)
 
     input_row = widgets.HBox(
-        [text_input, send_button], layout=widgets.Layout(flex="0 0 auto", width="100%", align_items="center")
+        [text_input, send_button], layout=widgets.Layout(width="100%", align_items="center")
     )
-    display(widgets.VBox([output, input_row], layout=widgets.Layout(width="100%")))
+    display(widgets.VBox([output, input_row], layout=widgets.Layout(width="100%", height="480px")))
     return graph_state, logger

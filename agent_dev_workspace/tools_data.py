@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from langchain_core.tools import tool
 
 def make_tools(session):
@@ -75,4 +76,33 @@ def make_tools(session):
         
         return summary
 
-    return [list_files_tool, inspect_data_tool]
+    @tool
+    def check_missing_tool() -> dict:
+        """Checks session.dataframe for missing or empty text values.
+
+        Returns a summary of how many rows have missing or blank text.
+        """
+        if session.dataframe is None:
+            return {"error": "No dataset loaded in session.dataframe."}
+        
+        df = session.dataframe
+        if "text" not in df.columns:
+            return {"error": "DataFrame missing 'text' column."}
+        
+        # Identify missing (NaN/None) or empty/whitespace-only text strings
+        missing_mask = df["text"].isna() | df["text"].astype(str).str.strip().eq("")
+        n_missing = int(missing_mask.sum())
+        
+        summary = {
+            "total_rows": len(df),
+            "n_missing": n_missing
+        }
+        
+        result_id = session.next_result_id("missing")
+        summary["result_id"] = result_id
+        
+        session.store_result("check_missing_tool", {}, summary)
+        
+        return summary
+
+    return [list_files_tool, inspect_data_tool, check_missing_tool]

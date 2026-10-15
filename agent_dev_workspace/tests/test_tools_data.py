@@ -16,7 +16,6 @@ def test_list_files_tool():
 def test_inspect_data_tool():
     session = SessionState()
     
-    # Load dataset using premade load_dataset_tool
     premade_tools, _ = load_workspace_tools("premade_tools", session)
     load_dataset_tool = next(t for t in premade_tools if t.name == "load_dataset_tool")
     load_dataset_tool.invoke({
@@ -25,7 +24,6 @@ def test_inspect_data_tool():
         "label_column": "label"
     })
     
-    # Call inspect_data_tool with n=3
     tools = make_tools(session)
     inspect_data_tool = next(t for t in tools if t.name == "inspect_data_tool")
     result = inspect_data_tool.invoke({"n": 3})
@@ -34,3 +32,22 @@ def test_inspect_data_tool():
     assert result["columns"] == ["text", "category_name", "category"]
     assert result["n_inspected"] == 3
     assert len(result["rows"]) == 3
+
+def test_check_missing_tool():
+    session = SessionState()
+    
+    premade_tools, _ = load_workspace_tools("premade_tools", session)
+    load_dataset_tool = next(t for t in premade_tools if t.name == "load_dataset_tool")
+    load_dataset_tool.invoke({
+        "file_path": "agent_dev/sample_fixture.csv",
+        "text_column": "text",
+        "label_column": "label"
+    })
+    
+    tools = make_tools(session)
+    check_missing_tool = next(t for t in tools if t.name == "check_missing_tool")
+    result = check_missing_tool.invoke({})
+    
+    # Check Known Answer 2: Exactly 1 row has missing/empty text
+    assert result["n_missing"] == 1
+    assert result["total_rows"] == 8

@@ -89,7 +89,6 @@ def make_tools(session):
         if "text" not in df.columns:
             return {"error": "DataFrame missing 'text' column."}
         
-        # Identify missing (NaN/None) or empty/whitespace-only text strings
         missing_mask = df["text"].isna() | df["text"].astype(str).str.strip().eq("")
         n_missing = int(missing_mask.sum())
         
@@ -105,4 +104,43 @@ def make_tools(session):
         
         return summary
 
-    return [list_files_tool, inspect_data_tool, check_missing_tool]
+    @tool
+    def check_duplicates_tool(drop: bool = False) -> dict:
+        """Checks for (and optionally drops) duplicate documents in session.dataframe.
+
+        When dropping, uses keep=False to remove all copies of duplicated rows.
+
+        Args:
+            drop: Whether to drop duplicate rows in place from session.dataframe.
+        """
+        if session.dataframe is None:
+            return {"error": "No dataset loaded in session.dataframe."}
+        
+        df = session.dataframe
+        original_rows = len(df)
+        
+        dupes_mask = df.duplicated(subset=["text"], keep=False)
+        n_duplicates = int(dupes_mask.sum())
+        
+        n_dropped = 0
+        if drop and n_duplicates > 0:
+            before_len = len(df)
+            df.drop_duplicates(subset=["text"], keep=False, inplace=True)
+            df.reset_index(drop=True, inplace=True)
+            n_dropped = before_len - len(df)
+        
+        summary = {
+            "total_rows": len(df),
+            "n_duplicates": n_duplicates,
+            "n_dropped": n_dropped,
+            "dropped": drop
+        }
+        
+        result_id = session.next_result_id("duplicates")
+        summary["result_id"] = result_id
+        
+        session.store_result("check_duplicates_tool", {"drop": drop}, summary)
+        
+        return summary
+
+    return [list_files_tool, inspect_data_tool, check_missing_tool, check_duplicates_tool]

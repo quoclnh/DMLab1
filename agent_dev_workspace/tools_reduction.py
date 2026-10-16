@@ -1,4 +1,5 @@
 from langchain_core.tools import tool
+import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
@@ -74,4 +75,37 @@ def make_tools(session):
         
         return summary
 
-    return [reduce_dimensions_tool]
+    @tool
+    def binarize_labels_tool() -> dict:
+        """One-hot encodes the category labels from the working DataFrame.
+
+        Stores the resulting binary matrix in session.artifacts["binarized_labels"].
+        """
+        if session.dataframe is None or "category_name" not in session.dataframe:
+            return {"error": "No dataset loaded or category_name column missing."}
+        
+        # Perform one-hot encoding
+        dummies = pd.get_dummies(session.dataframe["category_name"], prefix="label")
+        binary_matrix = dummies.astype(int).values
+        
+        # Store in artifacts
+        session.artifacts["binarized_labels"] = binary_matrix
+        
+        summary = {
+            "n_classes": binary_matrix.shape[1],
+            "classes": dummies.columns.tolist(),
+            "shape": binary_matrix.shape
+        }
+        
+        result_id = session.next_result_id("binarize")
+        summary["result_id"] = result_id
+        
+        session.store_result(
+            "binarize_labels_tool",
+            {},
+            summary
+        )
+        
+        return summary
+
+    return [reduce_dimensions_tool, binarize_labels_tool]

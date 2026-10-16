@@ -49,3 +49,23 @@ def test_reduce_dimensions_tool(session, tools):
     
     # Verify plotting requirement
     assert session.pending_figure is not None
+
+def test_binarize_labels_tool(session, tools):
+    binarize_labels = tools["binarize_labels_tool"]
+    
+    # Run the tool
+    result = binarize_labels.invoke({})
+    
+    # Verify summary
+    assert result["n_classes"] == 2
+    assert result["shape"] == (8, 2)
+    
+    # Verify artifacts
+    binary_matrix = session.artifacts["binarized_labels"]
+    assert binary_matrix.shape == (8, 2)
+    
+    # Verify encoding (catA=0, catB=1 in fixture, so label_catA and label_catB columns)
+    # Row 0 is catA -> [1, 0]
+    # Row 3 is catB -> [0, 1]
+    assert np.array_equal(binary_matrix[0], [1, 0])
+    assert np.array_equal(binary_matrix[3], [0, 1])

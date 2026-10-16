@@ -3,6 +3,38 @@ import pandas as pd
 import numpy as np
 from scipy.stats import pearsonr, spearmanr
 
+def _compute_correlation(session, target_class, method="pearson"):
+    """Helper to compute correlation between terms and a target class."""
+    if session.feature_matrix is None or session.feature_names is None:
+        return {"error": "No document-term matrix built yet. Run build_dtm_tool first."}
+    
+    if session.labels is None:
+        return {"error": "No category labels found in session.labels. Run build_dtm_tool first."}
+    
+    valid_categories = list(session.categories) if session.categories is not None else list(np.unique(session.labels))
+    if target_class not in valid_categories:
+        return {"error": f"Target class '{target_class}' not found in categories: {valid_categories}"}
+    
+    y = (session.labels == target_class).astype(int)
+    dense_matrix = session.feature_matrix.toarray()
+    terms = session.feature_names
+    
+    corrs = []
+    for col_idx in range(dense_matrix.shape[1]):
+        col = dense_matrix[:, col_idx]
+        if np.std(col) == 0 or np.std(y) == 0:
+            r = 0.0
+        else:
+            if method == "pearson":
+                r, _ = pearsonr(col, y)
+            else:
+                r, _ = spearmanr(col, y)
+            if np.isnan(r):
+                r = 0.0
+        corrs.append(float(r))
+    
+    return terms, corrs
+
 def make_tools(session):
     @tool
     def variance_filter_tool(threshold: float = 0.0) -> dict:
@@ -63,31 +95,9 @@ def make_tools(session):
             target_class: The target category label for one-vs-rest binary correlation.
             threshold: Absolute correlation threshold below which terms are flagged for removal.
         """
-        if session.feature_matrix is None or session.feature_names is None:
-            return {"error": "No document-term matrix built yet. Run build_dtm_tool first."}
-        
-        if session.labels is None:
-            return {"error": "No category labels found in session.labels. Run build_dtm_tool first."}
-        
-        # Validate that target_class exists in categories or labels
-        valid_categories = list(session.categories) if session.categories is not None else list(np.unique(session.labels))
-        if target_class not in valid_categories:
-            return {"error": f"Target class '{target_class}' not found in categories: {valid_categories}"}
-        
-        y = (session.labels == target_class).astype(int)
-        dense_matrix = session.feature_matrix.toarray()
-        terms = session.feature_names
-        
-        pearson_rs = []
-        for col_idx in range(dense_matrix.shape[1]):
-            col = dense_matrix[:, col_idx]
-            if np.std(col) == 0 or np.std(y) == 0:
-                r = 0.0
-            else:
-                r, _ = pearsonr(col, y)
-                if np.isnan(r):
-                    r = 0.0
-            pearson_rs.append(float(r))
+        res = _compute_correlation(session, target_class, method="pearson")
+        if isinstance(res, dict): return res
+        terms, pearson_rs = res
             
         report_df = pd.DataFrame({
             "term": terms,
@@ -134,30 +144,9 @@ def make_tools(session):
             target_class: The target category label for one-vs-rest binary correlation.
             threshold: Absolute correlation threshold below which terms are flagged for removal.
         """
-        if session.feature_matrix is None or session.feature_names is None:
-            return {"error": "No document-term matrix built yet. Run build_dtm_tool first."}
-        
-        if session.labels is None:
-            return {"error": "No category labels found in session.labels. Run build_dtm_tool first."}
-        
-        valid_categories = list(session.categories) if session.categories is not None else list(np.unique(session.labels))
-        if target_class not in valid_categories:
-            return {"error": f"Target class '{target_class}' not found in categories: {valid_categories}"}
-        
-        y = (session.labels == target_class).astype(int)
-        dense_matrix = session.feature_matrix.toarray()
-        terms = session.feature_names
-        
-        spearman_rs = []
-        for col_idx in range(dense_matrix.shape[1]):
-            col = dense_matrix[:, col_idx]
-            if np.std(col) == 0 or np.std(y) == 0:
-                r = 0.0
-            else:
-                r, _ = spearmanr(col, y)
-                if np.isnan(r):
-                    r = 0.0
-            spearman_rs.append(float(r))
+        res = _compute_correlation(session, target_class, method="spearman")
+        if isinstance(res, dict): return res
+        terms, spearman_rs = res
             
         report_df = pd.DataFrame({
             "term": terms,

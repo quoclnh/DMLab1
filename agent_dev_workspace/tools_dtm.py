@@ -1,6 +1,7 @@
 from langchain_core.tools import tool
 from sklearn.feature_extraction.text import CountVectorizer
 from typing import List, Optional
+import numpy as np
 
 def make_tools(session):
     @tool
@@ -57,4 +58,27 @@ def make_tools(session):
         
         return summary
 
-    return [build_dtm_tool]
+    @tool
+    def term_frequency_tool() -> dict:
+        """Aggregates term frequencies (column sums) across all documents in session.feature_matrix."""
+        if session.feature_matrix is None or session.feature_names is None:
+            return {"error": "No document-term matrix built yet. Run build_dtm_tool first."}
+        
+        counts = session.feature_matrix.sum(axis=0).A1
+        term_freqs = {name: int(count) for name, count in zip(session.feature_names, counts)}
+        
+        # Sort descending by frequency
+        sorted_freqs = dict(sorted(term_freqs.items(), key=lambda x: x[1], reverse=True))
+        
+        summary = {
+            "term_frequencies": sorted_freqs
+        }
+        
+        result_id = session.next_result_id("term_freq")
+        summary["result_id"] = result_id
+        
+        session.store_result("term_frequency_tool", {}, summary)
+        
+        return summary
+
+    return [build_dtm_tool, term_frequency_tool]

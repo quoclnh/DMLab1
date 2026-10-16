@@ -3,10 +3,7 @@ from agent_pipeline.session_state import SessionState
 from agent_pipeline.workspace_loader import load_workspace_tools
 from tools_dtm import make_tools
 
-def test_build_dtm_tool():
-    session = SessionState()
-    
-    # Load dataset using premade load_dataset_tool
+def load_sample_fixture(session):
     premade_tools, _ = load_workspace_tools("premade_tools", session)
     load_dataset_tool = next(t for t in premade_tools if t.name == "load_dataset_tool")
     load_dataset_tool.invoke({
@@ -14,11 +11,17 @@ def test_build_dtm_tool():
         "text_column": "text",
         "label_column": "label"
     })
+    return session
+
+def get_tool(session, tool_name):
+    tools = make_tools(session)
+    return next(t for t in tools if t.name == tool_name)
+
+def test_build_dtm_tool():
+    session = SessionState()
+    load_sample_fixture(session)
     
-    # Build DTM using student's build_dtm_tool
-    dtm_tools = make_tools(session)
-    build_dtm_tool = next(t for t in dtm_tools if t.name == "build_dtm_tool")
-    
+    build_dtm_tool = get_tool(session, "build_dtm_tool")
     result = build_dtm_tool.invoke({})
     
     # Check Known Answer 4: Vocabulary and sparsity
@@ -28,3 +31,24 @@ def test_build_dtm_tool():
     assert result["non_zero"] == 21
     assert result["total_elements"] == 40
     assert result["sparsity_pct"] == pytest.approx(47.5, abs=1e-3)
+
+def test_term_frequency_tool():
+    session = SessionState()
+    load_sample_fixture(session)
+    
+    build_dtm_tool = get_tool(session, "build_dtm_tool")
+    build_dtm_tool.invoke({})
+    
+    term_frequency_tool = get_tool(session, "term_frequency_tool")
+    result = term_frequency_tool.invoke({})
+    
+    # Check Known Answer 14: Total term frequencies
+    expected_freqs = {
+        "always": 7,
+        "gamma": 7,
+        "alpha": 6,
+        "delta": 4,
+        "beta": 3
+    }
+    
+    assert result["term_frequencies"] == expected_freqs

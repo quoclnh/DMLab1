@@ -52,3 +52,25 @@ def test_term_frequency_tool():
     }
     
     assert result["term_frequencies"] == expected_freqs
+
+def test_dtm_heatmap_tool():
+    session = SessionState()
+    load_sample_fixture(session)
+    
+    build_dtm_tool = get_tool(session, "build_dtm_tool")
+    build_dtm_tool.invoke({})
+    
+    dtm_heatmap_tool = get_tool(session, "dtm_heatmap_tool")
+    
+    # Check Known Answer 21: n_terms=2, n_documents=3 should return top-left 3x2 corner
+    result = dtm_heatmap_tool.invoke({"n_terms": 2, "n_documents": 3})
+    
+    expected_slice = [
+        [3, 1],
+        [2, 1],
+        [1, 1]
+    ]
+    
+    assert result["matrix_slice"] == expected_slice
+    assert result["terms"] == ["alpha", "always"]
+    assert session.pending_figure is not None

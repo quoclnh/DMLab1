@@ -1,6 +1,6 @@
 import pytest
-from agent_pipeline.session_state import SessionState
 from agent_pipeline.workspace_loader import load_workspace_tools
+from agent_pipeline.session_state import SessionState
 from tools_dtm import make_tools as make_dtm_tools
 from tools_filtering import make_tools as make_filtering_tools
 
@@ -43,3 +43,27 @@ def test_variance_filter_tool():
     assert variances["beta"] == pytest.approx(0.234375, abs=1e-3)
     assert variances["delta"] == pytest.approx(0.25, abs=1e-3)
     assert variances["gamma"] == pytest.approx(1.109375, abs=1e-3)
+
+def test_pearson_filter_tool():
+    session = SessionState()
+    load_sample_fixture(session)
+    
+    dtm_tools = make_dtm_tools(session)
+    build_dtm_tool = get_tool(dtm_tools, "build_dtm_tool")
+    build_dtm_tool.invoke({"ngram_range": [1, 1]})
+    
+    filtering_tools = make_filtering_tools(session)
+    pearson_filter_tool = get_tool(filtering_tools, "pearson_filter_tool")
+    
+    # Known Answer 6: target_class="catB", threshold=0.5 (absolute correlation < 0.5 dropped, e.g. "always" at 0.3780)
+    result = pearson_filter_tool.invoke({"target_class": "catB", "threshold": 0.5})
+    
+    assert "always" in result["dropped_terms"]
+    assert sorted(result["kept_terms"]) == sorted(["alpha", "beta", "delta", "gamma"])
+    
+    # Retrieve full_report to assert Pearson r for "delta"
+    report_df = session.results_store[result["result_id"]]["full_report"]
+    pearson_rs = dict(zip(report_df["term"], report_df["pearson_r"]))
+    
+    assert "delta" in pearson_rs
+    assert pearson_rs["delta"] == pytest.approx(1.0000, abs=1e-3)

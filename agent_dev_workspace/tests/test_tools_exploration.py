@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from agent_pipeline.session_state import SessionState
 from agent_pipeline.workspace_loader import load_workspace_tools
 from tools_dtm import make_tools as make_dtm_tools
@@ -30,12 +31,6 @@ def tools(session):
 def test_cosine_similarity_tool(session, tools):
     cosine_sim = tools["cosine_similarity_tool"]
     
-    # Known Answer 16: Cosine similarity pairs
-    # 0 vs 1: 0.9847
-    # 0 vs 3: 0.0909
-    # 3 vs 4: 0.9847
-    # 0 vs 7: 0.0
-    
     test_cases = [
         (0, 1, 0.9847),
         (0, 3, 0.0909),
@@ -46,3 +41,26 @@ def test_cosine_similarity_tool(session, tools):
     for idx_a, idx_b, expected_sim in test_cases:
         result = cosine_sim.invoke({"doc_index_a": idx_a, "doc_index_b": idx_b})
         assert result["similarity"] == pytest.approx(expected_sim, abs=1e-3)
+
+def test_feature_correlation_matrix_tool(session, tools):
+    feat_corr = tools["feature_correlation_matrix_tool"]
+    
+    # Known Answer 19: Feature correlation matrix
+    result = feat_corr.invoke({})
+    
+    terms = result["terms"]
+    corr_matrix = np.array(result["correlation_matrix"])
+    
+    # Check terms order (descending variance: alpha, gamma, delta, beta, always)
+    assert terms == ["alpha", "gamma", "delta", "beta", "always"]
+    
+    # Check specific correlations
+    # alpha/beta (0.8885)
+    alpha_idx = terms.index("alpha")
+    beta_idx = terms.index("beta")
+    assert corr_matrix[alpha_idx, beta_idx] == pytest.approx(0.8885, abs=1e-3)
+    
+    # gamma/delta (0.8307)
+    gamma_idx = terms.index("gamma")
+    delta_idx = terms.index("delta")
+    assert corr_matrix[gamma_idx, delta_idx] == pytest.approx(0.8307, abs=1e-3)

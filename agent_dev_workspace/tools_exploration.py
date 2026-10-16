@@ -1,5 +1,6 @@
 from langchain_core.tools import tool
 from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 def make_tools(session):
     @tool
@@ -41,4 +42,54 @@ def make_tools(session):
         
         return summary
 
-    return [cosine_similarity_tool]
+    @tool
+    def feature_correlation_matrix_tool() -> dict:
+        """Computes a feature-vs-feature correlation heatmap over the top-20 terms by variance.
+
+        Computes the Pearson correlation matrix across the top-20 terms by variance
+        and sets a heatmap of this matrix on session.pending_figure.
+        """
+        if session.feature_matrix is None or session.feature_names is None:
+            return {"error": "No document-term matrix built yet. Run build_dtm_tool first."}
+        
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+        
+        # 1. Compute variance for each term
+        dense_matrix = session.feature_matrix.toarray()
+        variances = np.var(dense_matrix, axis=0)
+        
+        # 2. Get top 20 terms by variance
+        top_indices = np.argsort(variances)[-20:][::-1]
+        top_terms = [session.feature_names[i] for i in top_indices]
+        
+        # 3. Compute Pearson correlation matrix
+        subset_matrix = dense_matrix[:, top_indices]
+        corr_matrix = np.corrcoef(subset_matrix, rowvar=False)
+        
+        # Handle NaN values (e.g., from zero-variance terms)
+        corr_matrix = np.nan_to_num(corr_matrix, nan=0.0)
+        
+        # 4. Build heatmap
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(corr_matrix, annot=True, xticklabels=top_terms, yticklabels=top_terms, ax=ax)
+        session.pending_figure = fig
+        
+        # 5. Prepare summary
+        summary = {
+            "terms": top_terms,
+            "correlation_matrix": corr_matrix.tolist()
+        }
+        
+        result_id = session.next_result_id("feat_corr")
+        summary["result_id"] = result_id
+        
+        session.store_result(
+            "feature_correlation_matrix_tool",
+            {},
+            summary
+        )
+        
+        return summary
+
+    return [cosine_similarity_tool, feature_correlation_matrix_tool]

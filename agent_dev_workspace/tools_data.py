@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import nltk
+import matplotlib.pyplot as plt
+import seaborn as sns
 from langchain_core.tools import tool
 from typing import Optional
 
@@ -194,7 +196,6 @@ def make_tools(session):
         if "text" not in df.columns:
             return {"error": "DataFrame missing 'text' column."}
         
-        # Ensure NLTK punkt and punkt_tab are available; return an error if unavailable
         for resource in ['tokenizers/punkt', 'tokenizers/punkt_tab']:
             try:
                 nltk.data.find(resource)
@@ -228,4 +229,59 @@ def make_tools(session):
         
         return summary
 
-    return [list_files_tool, inspect_data_tool, check_missing_tool, check_duplicates_tool, sample_data_tool, tokenize_tool]
+    @tool
+    def describe_data_tool() -> dict:
+        """Computes descriptive statistics on document text lengths (character counts)
+
+        overall and per category, and generates a box plot set on session.pending_figure.
+        """
+        if session.dataframe is None:
+            return {"error": "No dataset loaded in session.dataframe."}
+        
+        df = session.dataframe
+        if "text" not in df.columns:
+            return {"error": "DataFrame missing 'text' column."}
+        
+        df["text_length"] = df["text"].fillna("").apply(len)
+        
+        overall_stats = df["text_length"].describe().to_dict()
+        
+        per_category_stats = {}
+        if "category_name" in df.columns:
+            for cat, group in df.groupby("category_name"):
+                per_category_stats[str(cat)] = group["text_length"].describe().to_dict()
+                
+        # Generate box plot
+        fig, ax = plt.subplots(figsize=(8, 6))
+        if "category_name" in df.columns:
+            sns.boxplot(x="category_name", y="text_length", data=df, ax=ax)
+        else:
+            sns.boxplot(y="text_length", data=df, ax=ax)
+        ax.set_title("Document Text Length by Category")
+        ax.set_xlabel("Category" if "category_name" in df.columns else "")
+        ax.set_ylabel("Text Length (characters)")
+        plt.tight_layout()
+        
+        session.pending_figure = fig
+        
+        summary = {
+            "overall_stats": overall_stats,
+            "per_category_stats": per_category_stats
+        }
+        
+        result_id = session.next_result_id("describe")
+        summary["result_id"] = result_id
+        
+        session.store_result("describe_data_tool", {}, summary)
+        
+        return summary
+
+    return [
+        list_files_tool,
+        inspect_data_tool,
+        check_missing_tool,
+        check_duplicates_tool,
+        sample_data_tool,
+        tokenize_tool,
+        describe_data_tool
+    ]

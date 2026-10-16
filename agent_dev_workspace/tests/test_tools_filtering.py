@@ -1,8 +1,8 @@
 import pytest
-from agent_pipeline.workspace_loader import load_workspace_tools
 from agent_pipeline.session_state import SessionState
-from tools_dtm import make_tools as make_dtm_tools
+from agent_pipeline.workspace_loader import load_workspace_tools
 from tools_filtering import make_tools as make_filtering_tools
+from tools_dtm import make_tools as make_dtm_tools
 
 def load_sample_fixture(session):
     premade_tools, _ = load_workspace_tools("premade_tools", session)
@@ -50,7 +50,7 @@ def test_pearson_filter_tool():
     
     dtm_tools = make_dtm_tools(session)
     build_dtm_tool = get_tool(dtm_tools, "build_dtm_tool")
-    build_dtm_tool.invoke({"ngram_range": [1, 1]})
+    build_dtm_tool.invoke({})
     
     filtering_tools = make_filtering_tools(session)
     pearson_filter_tool = get_tool(filtering_tools, "pearson_filter_tool")
@@ -67,3 +67,27 @@ def test_pearson_filter_tool():
     
     assert "delta" in pearson_rs
     assert pearson_rs["delta"] == pytest.approx(1.0000, abs=1e-3)
+
+def test_spearman_filter_tool():
+    session = SessionState()
+    load_sample_fixture(session)
+    
+    dtm_tools = make_dtm_tools(session)
+    build_dtm_tool = get_tool(dtm_tools, "build_dtm_tool")
+    build_dtm_tool.invoke({})
+    
+    filtering_tools = make_filtering_tools(session)
+    spearman_filter_tool = get_tool(filtering_tools, "spearman_filter_tool")
+    
+    # Known Answer 6: target_class="catB", threshold=0.5
+    result = spearman_filter_tool.invoke({"target_class": "catB", "threshold": 0.5})
+
+    assert "always" in result["dropped_terms"]
+    assert sorted(result["kept_terms"]) == sorted(["alpha", "beta", "delta", "gamma"])
+    
+    # Retrieve full_report to assert Spearman r for "delta"
+    report_df = session.results_store[result["result_id"]]["full_report"]
+    spearman_rs = dict(zip(report_df["term"], report_df["spearman_r"]))
+    
+    assert "delta" in spearman_rs
+    assert spearman_rs["delta"] == pytest.approx(1.0000, abs=1e-3)

@@ -58,6 +58,7 @@ def make_tools(session):
                 "category_name": category_name,
                 "filtering_method": filtering_method,
                 "algorithm": algorithm,
+                "total_patterns": 0,
                 "patterns": [],
                 "note": "no terms survived vectorization"
             }
@@ -71,6 +72,7 @@ def make_tools(session):
                 "category_name": category_name,
                 "filtering_method": filtering_method,
                 "algorithm": algorithm,
+                "total_patterns": 0,
                 "patterns": [],
                 "note": "no terms survived vectorization"
             }
@@ -105,6 +107,7 @@ def make_tools(session):
                 "category_name": category_name,
                 "filtering_method": filtering_method,
                 "algorithm": algorithm,
+                "total_patterns": 0,
                 "patterns": [],
                 "note": "no terms survived filtering"
             }
@@ -126,6 +129,7 @@ def make_tools(session):
                 "category_name": category_name,
                 "filtering_method": filtering_method,
                 "algorithm": algorithm,
+                "total_patterns": 0,
                 "patterns": [],
                 "note": "no transactions found"
             }
@@ -186,7 +190,8 @@ def make_tools(session):
             "category_name": category_name,
             "filtering_method": filtering_method,
             "algorithm": algorithm,
-            "patterns": patterns,
+            "total_patterns": len(patterns),
+            "patterns": patterns[:20],
             "artifact_key": artifact_key
         }
 

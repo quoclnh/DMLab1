@@ -121,7 +121,6 @@ def make_tools(session):
             return {"error": "No dataset loaded in session.dataframe."}
         
         df = session.dataframe
-        original_rows = len(df)
         
         dupes_mask = df.duplicated(subset=["text"], keep=False)
         n_duplicates = int(dupes_mask.sum())
@@ -136,8 +135,7 @@ def make_tools(session):
         summary = {
             "total_rows": len(df),
             "n_duplicates": n_duplicates,
-            "n_dropped": n_dropped,
-            "dropped": drop
+            "n_dropped": n_dropped
         }
         
         result_id = session.next_result_id("duplicates")
@@ -167,6 +165,8 @@ def make_tools(session):
         
         sampled_df = df.sample(n=n, random_state=random_state)
         sampled_indices = sampled_df.index.tolist()
+        
+        session.dataframe = sampled_df.reset_index(drop=True)
         
         result_id = session.next_result_id("sample")
         

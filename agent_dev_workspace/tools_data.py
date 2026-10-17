@@ -167,18 +167,16 @@ def make_tools(session):
         
         sampled_df = df.sample(n=n, random_state=random_state)
         sampled_indices = sampled_df.index.tolist()
-        records = sampled_df.to_dict(orient="records")
-        
-        summary = {
-            "n_sampled": len(records),
-            "sampled_indices": sampled_indices,
-            "rows": records
-        }
         
         result_id = session.next_result_id("sample")
-        summary["result_id"] = result_id
         
-        session.store_result("sample_data_tool", {"n": n, "random_state": random_state}, summary)
+        summary = {
+            "result_id": result_id,
+            "n_sampled": len(sampled_df),
+            "sampled_indices": sampled_indices
+        }
+        
+        session.store_result("sample_data_tool", {"n": n, "random_state": random_state}, summary, full_report=sampled_df)
         
         return summary
 

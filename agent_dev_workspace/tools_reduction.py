@@ -51,6 +51,8 @@ def make_tools(session):
         else:
             return {"error": f"Unknown method: {method}"}
         
+        session.artifacts[f"reduced_coords_{method}"] = coords
+        
         # Plotting
         fig, ax = plt.subplots(figsize=(8, 6))
         labels = session.dataframe["category_name"] if "category_name" in session.dataframe else session.labels
@@ -60,7 +62,8 @@ def make_tools(session):
         
         summary = {
             "method": method,
-            "coordinates": coords.tolist(),
+            "n_documents": n_docs,
+            "coordinates": coords[:20].tolist(),
             "explained_variance": explained_variance
         }
         

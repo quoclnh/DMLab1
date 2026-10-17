@@ -149,6 +149,12 @@ def make_tools(session):
                 from PAMI.extras.convert import DF2DB
                 df2db = DF2DB.DF2DB(df_trans)
                 df2db.convert2TransactionalDatabase(db_file, ">", 0)
+
+                with open(db_file, "rb") as f:
+                    raw = f.read()
+
+                with open(db_file, "w", encoding="utf-8") as f:
+                    f.write(raw.decode("latin-1"))
             except Exception as e:
                 return {"error": f"Failed to convert DataFrame to transactional DB: {str(e)}"}
 

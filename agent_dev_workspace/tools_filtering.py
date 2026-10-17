@@ -56,23 +56,14 @@ def make_tools(session):
             "variance": variances
         }).sort_values(by="variance", ascending=False).reset_index(drop=True)
         
-        kept_terms = []
-        dropped_terms = []
-        
-        for _, row in report_df.iterrows():
-            term = row["term"]
-            var = row["variance"]
-            if var >= threshold:
-                kept_terms.append(term)
-            else:
-                dropped_terms.append(term)
+        mask = report_df["variance"] >= threshold
+        kept_count = int(mask.sum())
+        dropped_count = int((~mask).sum())
                 
         summary = {
             "threshold": threshold,
-            "kept_count": len(kept_terms),
-            "dropped_count": len(dropped_terms),
-            "kept_terms": kept_terms,
-            "dropped_terms": dropped_terms
+            "kept_count": kept_count,
+            "dropped_count": dropped_count
         }
         
         result_id = session.next_result_id("var_filter")
@@ -104,24 +95,15 @@ def make_tools(session):
             "pearson_r": pearson_rs
         }).sort_values(by="pearson_r", ascending=False).reset_index(drop=True)
         
-        kept_terms = []
-        dropped_terms = []
-        
-        for _, row in report_df.iterrows():
-            term = row["term"]
-            r = row["pearson_r"]
-            if abs(r) >= threshold:
-                kept_terms.append(term)
-            else:
-                dropped_terms.append(term)
+        mask = report_df["pearson_r"].abs() >= threshold
+        kept_count = int(mask.sum())
+        dropped_count = int((~mask).sum())
                 
         summary = {
             "target_class": target_class,
             "threshold": threshold,
-            "kept_count": len(kept_terms),
-            "dropped_count": len(dropped_terms),
-            "kept_terms": kept_terms,
-            "dropped_terms": dropped_terms
+            "kept_count": kept_count,
+            "dropped_count": dropped_count
         }
         
         result_id = session.next_result_id("pearson_filter")
@@ -153,24 +135,15 @@ def make_tools(session):
             "spearman_r": spearman_rs
         }).sort_values(by="spearman_r", ascending=False).reset_index(drop=True)
         
-        kept_terms = []
-        dropped_terms = []
-        
-        for _, row in report_df.iterrows():
-            term = row["term"]
-            r = row["spearman_r"]
-            if abs(r) >= threshold:
-                kept_terms.append(term)
-            else:
-                dropped_terms.append(term)
+        mask = report_df["spearman_r"].abs() >= threshold
+        kept_count = int(mask.sum())
+        dropped_count = int((~mask).sum())
                 
         summary = {
             "target_class": target_class,
             "threshold": threshold,
-            "kept_count": len(kept_terms),
-            "dropped_count": len(dropped_terms),
-            "kept_terms": kept_terms,
-            "dropped_terms": dropped_terms
+            "kept_count": kept_count,
+            "dropped_count": dropped_count
         }
         
         result_id = session.next_result_id("spearman_filter")

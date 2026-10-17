@@ -31,8 +31,8 @@ def test_variance_filter_tool():
     # Check Known Answer 5: threshold=0.15 keeps alpha, beta, delta, gamma and removes always
     result = variance_filter_tool.invoke({"threshold": 0.15})
     
-    assert result["dropped_terms"] == ["always"]
-    assert sorted(result["kept_terms"]) == sorted(["alpha", "beta", "delta", "gamma"])
+    assert result["kept_count"] == 4
+    assert result["dropped_count"] == 1
     
     # Verify specific known variance values from Known Answer 5
     report_df = session.results_store[result["result_id"]]["full_report"]
@@ -58,8 +58,8 @@ def test_pearson_filter_tool():
     # Known Answer 6: target_class="catB", threshold=0.5 (absolute correlation < 0.5 dropped, e.g. "always" at 0.3780)
     result = pearson_filter_tool.invoke({"target_class": "catB", "threshold": 0.5})
     
-    assert "always" in result["dropped_terms"]
-    assert sorted(result["kept_terms"]) == sorted(["alpha", "beta", "delta", "gamma"])
+    assert result["kept_count"] == 4
+    assert result["dropped_count"] == 1
     
     # Retrieve full_report to assert Pearson r for "delta"
     report_df = session.results_store[result["result_id"]]["full_report"]
@@ -82,8 +82,8 @@ def test_spearman_filter_tool():
     # Known Answer 6: target_class="catB", threshold=0.5
     result = spearman_filter_tool.invoke({"target_class": "catB", "threshold": 0.5})
 
-    assert "always" in result["dropped_terms"]
-    assert sorted(result["kept_terms"]) == sorted(["alpha", "beta", "delta", "gamma"])
+    assert result["kept_count"] == 4
+    assert result["dropped_count"] == 1
     
     # Retrieve full_report to assert Spearman r for "delta"
     report_df = session.results_store[result["result_id"]]["full_report"]

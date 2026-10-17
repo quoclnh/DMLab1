@@ -2,6 +2,7 @@ from langchain_core.tools import tool
 from sklearn.feature_extraction.text import CountVectorizer
 from typing import List, Optional
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -61,24 +62,43 @@ def make_tools(session):
         return summary
 
     @tool
-    def term_frequency_tool() -> dict:
-        """Aggregates term frequencies (column sums) across all documents in session.feature_matrix."""
+    def term_frequency_tool(top_n: int = 20) -> dict:
+        """Aggregates term frequencies (column sums) across all documents in session.feature_matrix.
+
+        Args:
+            top_n: Number of top terms by frequency to return in the summary (default 20).
+        """
         if session.feature_matrix is None or session.feature_names is None:
             return {"error": "No document-term matrix built yet. Run build_dtm_tool first."}
+        
+        if not isinstance(top_n, int) or top_n <= 0:
+            return {"error": "Parameter 'top_n' must be a positive integer."}
         
         counts = session.feature_matrix.sum(axis=0).A1
         term_freqs = {name: int(count) for name, count in zip(session.feature_names, counts)}
         
         sorted_freqs = dict(sorted(term_freqs.items(), key=lambda x: x[1], reverse=True))
+        top_freqs = dict(list(sorted_freqs.items())[:top_n])
+        
+        report_df = pd.DataFrame({
+            "term": list(sorted_freqs.keys()),
+            "frequency": list(sorted_freqs.values())
+        })
         
         summary = {
-            "term_frequencies": sorted_freqs
+            "total_terms": len(sorted_freqs),
+            "term_frequencies": top_freqs
         }
         
         result_id = session.next_result_id("term_freq")
         summary["result_id"] = result_id
         
-        session.store_result("term_frequency_tool", {}, summary)
+        session.store_result(
+            "term_frequency_tool",
+            {"top_n": top_n},
+            summary,
+            full_report=report_df
+        )
         
         return summary
 
